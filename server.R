@@ -31,14 +31,10 @@ shinyServer(function(input, output){
     df
   })
   
-  kfold<-reactive({
-    as.integer(input$k_fold)
-  })
-  
   cvIndex <- reactive({
     set.seed(222)
     df<-datasetInput1()
-    createFolds(factor(df[,c(input$dv)]), k = kfold() , returnTrain = T)
+    createFolds(factor(df[,c(input$dv)]),  3, returnTrain = T)
   })
   
   #Create empty vectors to store indices
@@ -52,7 +48,7 @@ shinyServer(function(input, output){
     df<- datasetInput()
     cv<-cvIndex()
     trainset<-NULL
-    for(i in 1:kfold()){
+    for(i in 1:3){
       trainset[[i]]<-df[c(cv[[i]]), ]
     }
     return(trainset)})
@@ -62,7 +58,7 @@ shinyServer(function(input, output){
     df<- datasetInput()
     cv<-cvIndex()
     testset<-NULL
-    for(i in 1:kfold()){
+    for(i in 1:3){
       testset[[i]]<-df[-c(cv[[i]]), ]
     }
     return(testset)
@@ -71,7 +67,7 @@ shinyServer(function(input, output){
   answers<- reactive({
     test_df<-testset()
     answers<-NULL
-    for(i in 1:kfold()){
+    for(i in 1:3){
       answers[[i]]<-test_df[[i]][,c(input$dv)]
     }
     return(answers)
@@ -83,7 +79,7 @@ shinyServer(function(input, output){
     trainset_x<-NULL
     train_df<- trainset()
     drops<- c(input$dv)
-    for (i in 1:kfold()){
+    for (i in 1:3){
       trainset_x[[i]]<-as.matrix(train_df[[i]][ , !(names(datasetInput()) %in% drops)])
     }
     return(trainset_x)
@@ -92,7 +88,7 @@ shinyServer(function(input, output){
   trainset_y<- reactive({
     trainset_y<-NULL
     train_df<- trainset()
-    for (i in 1:kfold()){
+    for (i in 1:3){
       trainset_y[[i]]<-as.factor(train_df[[i]][ ,c(input$dv)]==c(levelset()[1]))
     }
     return(trainset_y)
@@ -101,7 +97,7 @@ shinyServer(function(input, output){
   testset_x<- reactive({
     testset_x<-NULL
     drops<- c(input$dv)
-    for (i in 1:kfold()){
+    for (i in 1:3){
       testset_x[[i]]<-as.matrix(testset()[[i]][ , !(names(datasetInput()) %in% drops)])
     }
     testset_x
@@ -131,14 +127,6 @@ shinyServer(function(input, output){
     p
   })
   
-  
-  #Mann Whitney willcoxon statistic
-  output$wilcoxon<- renderPrint({
-    A<- subset(datasetInput(), datasetInput()[,c(input$dv)] == c(levelset()[1]), select = c(input$sumvar))[,1]
-    B<- subset(datasetInput(), datasetInput()[,c(input$dv)] == c(levelset()[2]), select = c(input$sumvar))[,1]
-    wilcox.test(A,B, paired = TRUE)
-  })
-  
   #Regression formulae
   regFormula <- reactive({
     as.formula(paste(input$dv, '~', '.'))
@@ -157,6 +145,10 @@ shinyServer(function(input, output){
   })
   
   
+  svm_model<-reactive({
+    svm(regFormula(), data = datasetInput(), probability = TRUE)
+  })
+  
   ada_model<-reactive({
     boosting(regFormula(),data= datasetInput() , mfinal = input$ada_tree)
   })
@@ -172,15 +164,18 @@ shinyServer(function(input, output){
     mod
   })
   
-  
+  output$type<-renderPrint({
+    imp<-obrf_model()$importance
+    str(imp)
+  })
   
   
   #Probabilities---------------------------------------
   
   lasso_pred_prob<-reactive({
     lasso_pred_prob<-NULL
-    for (i in 1:kfold()){
-      lasso_model<-cv.glmnet(trainset_x()[[i]], y = trainset_y()[[i]], family='binomial', alpha = 1, nfolds = 5)
+    for (i in 1:3){
+      lasso_model<-cv.glmnet(trainset_x()[[i]], y = trainset_y()[[i]], family='binomial', alpha = 1, nfolds = 4)
       lasso_pred_prob1<-predict(lasso_model, newx= testset_x()[[i]], type='response',s=c(input$t_value))
       lasso_pred_prob[[i]]<-lasso_pred_prob1
     }
@@ -190,7 +185,7 @@ shinyServer(function(input, output){
   
   rf_pred_prob<-reactive({
     rf_pred_prob<-NULL
-    for (i in 1:kfold()){
+    for (i in 1:3){
       rf_model<-randomForest(regFormula(), data = trainset()[[i]], ntree = input$rf_tree)
       rf_pred_prob[[i]]<-predict(rf_model, newdata = testset()[[i]], type ='prob')[,c(levelset()[2])]
     }
@@ -199,7 +194,7 @@ shinyServer(function(input, output){
   
   svm_pred_prob<-reactive({
     svm_pred_prob<-NULL
-    for (i in 1:kfold()){
+    for (i in 1:3){
       svm_model<-svm(regFormula(), data = trainset()[[i]], probability = TRUE, cost = input$svm_cost)
       svm_pred_prob1<- predict(svm_model,newdata = testset()[[i]] ,decision.values =TRUE,
                                probability = TRUE)
@@ -211,7 +206,7 @@ shinyServer(function(input, output){
   
   ada_pred_prob<-reactive({
     ada_pred_prob<-NULL
-    for (i in 1:kfold()){
+    for (i in 1:3){
       ada_model<-boosting(regFormula(),data=trainset()[[i]], mfinal = input$ada_tree)
       ada_pred_prob1<- predict(ada_model ,newdata = testset()[[i]],type='prob')$prob
       ada_pred_prob[[i]]<- ada_pred_prob1[,2]
@@ -221,7 +216,7 @@ shinyServer(function(input, output){
   
   obrf_pred_prob<-reactive({
     obrf_pred_prob<-NULL
-    for (i in 1:kfold()){
+    for (i in 1:3){
       obrf_model<-obliqueRF(trainset_x()[[i]], trainset_y()[[i]], ntree = input$obrf_tree, training_method = 'log')
       obrf_pred_prob1<-predict(obrf_model,newdata = testset_x()[[i]], type='prob')
       colnames(obrf_pred_prob1)<-c(levelset()[1], levelset()[2])
@@ -230,6 +225,9 @@ shinyServer(function(input, output){
     return(obrf_pred_prob)
   })
   
+  output$type1<-renderPrint({
+    colnames(obrf_pred_prob()[[1]])
+  })
   
   
   
@@ -238,7 +236,7 @@ shinyServer(function(input, output){
   lasso_pred_class<-reactive({
     lasso_pred_class<-NULL
     lasso_pred_prob1<-lasso_pred_prob()
-    for (i in 1:kfold()){
+    for (i in 1:3){
       lasso_pred_class1<-ifelse(lasso_pred_prob1[[i]] > 0.5 ,levelset()[1],levelset()[2])
       lasso_pred_class[[i]]<-as.data.frame(lasso_pred_class1)[,1]
     }
@@ -250,7 +248,7 @@ shinyServer(function(input, output){
   rf_pred_class<-reactive({
     rf_pred_class<-NULL
     rf_pred_prob1<-rf_pred_prob()
-    for (i in 1:kfold()){
+    for (i in 1:3){
       rf_pred_class1<-ifelse(rf_pred_prob1[[i]] > 0.5 ,levelset()[2],levelset()[1])
       rf_pred_class[[i]]<-as.data.frame(rf_pred_class1)[,1]
     }
@@ -260,7 +258,7 @@ shinyServer(function(input, output){
   svm_pred_class<-reactive({
     svm_pred_class<-NULL
     svm_pred_prob1<-svm_pred_prob()
-    for (i in 1:kfold()){
+    for (i in 1:3){
       svm_pred_class1<-ifelse(svm_pred_prob1[[i]] > 0.5 ,levelset()[2],levelset()[1])
       svm_pred_class[[i]]<-as.data.frame(svm_pred_class1)[,1]
     }
@@ -271,7 +269,7 @@ shinyServer(function(input, output){
   ada_pred_class<-reactive({
     ada_pred_class<-NULL
     ada_pred_prob1<-ada_pred_prob()
-    for (i in 1:kfold()){
+    for (i in 1:3){
       ada_pred_class1<-ifelse(ada_pred_prob1[[i]] > 0.5 ,levelset()[2],levelset()[1])
       ada_pred_class[[i]]<-as.data.frame(ada_pred_class1)[,1]
     }
@@ -281,7 +279,7 @@ shinyServer(function(input, output){
   obrf_pred_class<-reactive({
     obrf_pred_class<-NULL
     obrf_pred_prob1<-obrf_pred_prob()
-    for (i in 1:kfold()){
+    for (i in 1:3){
       obrf_pred_class1<-ifelse(obrf_pred_prob1[[i]] > 0.5 ,levelset()[2],levelset()[1])
       obrf_pred_class[[i]]<-as.data.frame(obrf_pred_class1)[,1]
     }
@@ -493,10 +491,10 @@ shinyServer(function(input, output){
   output$rf_VarImpPlot<- renderPlot({
     imp_vec1<-sort.int(rf_model()$importance,index.return = TRUE)
     names1<-names(rf_model()$importance[,1])[imp_vec1$ix]
-    par(mar=c(6.1, 12.2 ,4.1 ,2.1))
-    barplot(tail(imp_vec1$x,20), horiz = TRUE, 
-            names.arg =rev(rev(names(rf_model()$importance[,1])[imp_vec1$ix])[1:20]), las = 1, col = 'red',
-            main = 'Random Forest Variable Importance', xlim = c(0, max(imp_vec1$x) + 1))
+    par(mar=c(6.1, 15.2 ,4.1 ,2.1))
+    barplot(tail(imp_vec1$x,10), horiz = TRUE, 
+            names.arg =names1[1:10], las = 1, col = 'red',
+            main = 'Random Forest Variable Importance', xlim = c(0, max(imp_vec1$x)))
   })
   
   
@@ -505,13 +503,14 @@ shinyServer(function(input, output){
   output$ada_VarImpPlot<- renderPlot({
     imp_vec1<-sort.int(ada_model()$importance,index.return = TRUE)
     names1<-names(ada_model()$importance)[imp_vec1$ix]
-    par(mar=c(6.1, 12.2 ,4.1 ,2.1))
-    barplot(tail(imp_vec1$x,20), horiz = TRUE, 
-            names.arg = rev(rev(names(ada_model()$importance)[imp_vec1$ix])[1:20]), las = 1, col = 'red',
-            main = 'AdaBoost Variable Importance', xlim = c(0, max(imp_vec2$x) + 2))
+    par(mar=c(6.1, 15.2 ,4.1 ,2.1))
+    barplot(tail(imp_vec1$x,10), horiz = TRUE, 
+            names.arg =names1[1:10], las = 1, col = 'red',
+            main = 'AdaBoostM1 Variable Importance', xlim = c(0, max(imp_vec1$x)))
   })
   
   
+  #include VarImpPlot of oblique regression
   
   
   #include VarImpPlot of obliqueRF
@@ -520,25 +519,21 @@ shinyServer(function(input, output){
     imp_vec1<-sort.int(obrf_imp,index.return = TRUE)
     drops<- c(input$dv)
     names.arg1 <- colnames(datasetInput()[,!(names(datasetInput()) %in% drops)])[unlist(imp_vec1$ix)]
-    par(mar=c(6.1, 12.2 ,4.1 ,2.1))
+    par(mar=c(6.1, 15.2 ,4.1 ,2.1))
     barplot(rev(head(imp_vec1$x,20)), horiz = TRUE, 
             names.arg = rev(names.arg1[1:20]), las = 1, col = 'red',
             main = 'OBRF Variable Importance',xlim = c(0, min(imp_vec1$x -16)))
   })
   
   
+  
   #include summary of coefficients for lasso/logistic regression
-  output$lasso_summary <- renderTable({
-    drops<- c(input$dv)
-    Variables<-c(colnames(datasetInput()[,!(names(datasetInput()) %in% drops)])[which(coef(lasso_model(), s = input$t_value) != 0)])
-    Coefficients<-c(coef(lasso_cv_model, s = input$t_value)[which(coef(lasso_model(), s = input$t_value) != 0)])
-    tab<-cbind(Variables, Coefficients)
-    tab
+  output$lasso_summary <- renderPrint({
+    coef(lasso_model(), s = "lambda.min")
     #sig<-coef(lasso_model(), s = "lambda.min")
     #names(sig[sig!=0.0])
   })
-  
-  
-  
 })
+
+
 

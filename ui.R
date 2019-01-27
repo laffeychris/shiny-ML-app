@@ -27,13 +27,7 @@ shinyUI(fluidPage(#theme = 'bootstrap1.css',
       uiOutput('dv'),
       
       # added interface for uploading data from
-      tags$br(), 
-      
-      selectInput('k_fold', label = "Number of folds - Cross Validation", 
-                  choices = list('2'=2,'3'=3,'4'=4,'5'=5, 
-                                 '6'=6, '7'=7, '8'=8, '9'=9, '10'=10, 
-                                 n = 'nrows'), selected = '5'),
-      
+      tags$br(),
       
       checkboxGroupInput('check', h3('Methods of Classification:'), 
                          choices = list( 'Lasso Regression' = 1, 'Support Vector Machine' = 2, 
@@ -53,11 +47,11 @@ shinyUI(fluidPage(#theme = 'bootstrap1.css',
                   value = 5), 
       
       sliderInput("ada_tree", "AdaBoost Trees",
-                  min = 0, max = 100, value = 10, step = 2), 
+                  min = 0, max = 60, value = 10, step = 2), 
       sliderInput("rf_tree", label = "RF Trees",
                   min = 0, max = 1000, value = 600, step = 50),
       sliderInput("obrf_tree", "OBliqueRF Trees",
-                  min = 0, max = 100, value = 10, step = 2)),
+                  min = 0, max = 60, value = 10, step = 2)),
     
     #Main panel 
     
@@ -70,8 +64,6 @@ shinyUI(fluidPage(#theme = 'bootstrap1.css',
                   tabPanel("Summary Statistics",
                            uiOutput('sumvar'),
                            verbatimTextOutput('summary'), 
-                           h3(' Wilcoxon signed-rank test'),
-                           verbatimTextOutput('wilcoxon'),
                            h2('BoxPlot'),
                            plotlyOutput('boxPlot')),
                   
@@ -102,9 +94,7 @@ shinyUI(fluidPage(#theme = 'bootstrap1.css',
                                                  #helpText("Variables denoted with '.' are deemed insignificant at a 0.05 level of confidence"),
                                                  #They arent?
                                                  #Maybe we should just list all non-zero variables???
-                                                 helpText('Variables output have non-zero coefficients.'),
-                                                 helpText('0. may appear where coefficients very small'),
-                                                 tableOutput('lasso_summary')),
+                                                 verbatimTextOutput('lasso_summary')),
                                         tabPanel('Random Forest',
                                                  plotOutput('rf_VarImpPlot')), 
                                         tabPanel('AdaBoost', 
