@@ -1,0 +1,8 @@
+@import url("//fonts.googleapis.com/css?family=Pacifico|Cabin:400,700");
+
+h1 {
+  font-family: 'Pacifico', regular;
+  font-weight: 500;
+  line-height: 1.5;
+  color: #0ED695;
+}
