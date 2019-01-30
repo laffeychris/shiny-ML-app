@@ -32,3 +32,12 @@ Currently, the shiny application looks at the performance of the following class
 * Random Forest 
 * Oblique Random Forest 
 
+### TO DO##
+A few points I'll look at working on initially: 
+* Error handling and exceptions for data entered in incorrect format
+* Addition of more machine learning algorithms
+* Interactive explaination of output/results
+* Further options for investigation/visualisation of distribution of data beforehand
+
+
+
