@@ -1,8 +1,7 @@
 ## Shiny App for the Classification of Binary Response Data ##
 
-This project initially created as part of my thesis for my MSc. in Statistics. I've uploaded it to github in an effort to make myself improve it, and make it more of a generalised app (as it was written with the objective of performaing on two datasets, and hence may not be that robust).
-
-With that in mind, I'm looking to firstly improve it to a quality I'm happy with, then possibly publish it ( _make it public on github rather_ ).
+This project initially created as part of my thesis for my MSc. in Statistics. 
+I aim to make it more of a generalised shiny application, that can take any .csv file given and assess selected machine learning methods on their attempt at classifying a dataset (as it was written with the objective of performaing on two datasets, and hence may not be that robust).
 
 ### Prerequisites ###
 
@@ -10,7 +9,7 @@ Currenlty, the version of `R` I'm running is `R version 3.3.2`. Various librarie
 * `shiny`
 * `plotly`
 
-## Sample Data ##
+### Sample Data ###
 
 The sample data used in the begining to run tests on the app are listed below with a brief explaination listed on both.
 
@@ -22,4 +21,14 @@ One of the objectives of updating this project is to make the application more r
 * The dependant variable is binomially distributed
 * The independant varibles are continuous, numeric variables
 * The data uploaded is in either a `.csv` or `.xlsx`format.
+
+### Machine Learning/ Statistical Models ###
+
+Currently, the shiny application looks at the performance of the following classification methods:
+
+* Lasso Regression (L<sub>1</sub> Regularization)
+* Support Vector Machine 
+* Adaptive Boosting
+* Random Forest 
+* Oblique Random Forest 
 
